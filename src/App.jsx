@@ -1,98 +1,107 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { beads, cordColors, defaultDesign, hardwareColors } from "./data.js";
+import cordLoopSvgRaw from "./assets/cord-loop.svg?raw";
 
 const beadById = new Map(beads.map((bead) => [bead.id, bead]));
 const hardwareById = new Map(hardwareColors.map((color) => [color.id, color]));
 const cordById = new Map(cordColors.map((color) => [color.id, color]));
+const charmBeads = beads.filter((bead) => bead.suggestedUse.includes("charm"));
 
 export default function App() {
   const [design, setDesign] = useState(defaultDesign);
-  const [beadFilter, setBeadFilter] = useState("all");
+  const [activeStep, setActiveStep] = useState(0);
+  const stepPagesRef = useRef(null);
 
   const selectedHardware = hardwareById.get(design.hardwareColor) || hardwareColors[0];
   const selectedCord = cordById.get(design.cordColor) || cordColors[0];
-  const selectedBeads = design.beads.map((item) => ({ ...beadById.get(item.id), key: item.key })).filter(Boolean);
   const selectedCharm = design.charm ? beadById.get(design.charm.beadId) : null;
-
-  const filteredBeads = useMemo(() => {
-    if (beadFilter === "all") return beads;
-    if (beadFilter === "charm") return beads.filter((bead) => bead.suggestedUse.includes("charm"));
-    return beads.filter((bead) => bead.shape === beadFilter);
-  }, [beadFilter]);
-
-  const addBead = (id) => {
-    setDesign((current) => ({
-      ...current,
-      beads: [...current.beads, { id, key: `${id}-${crypto.randomUUID()}` }],
-    }));
-  };
-
-  const removeBead = (key) => {
-    setDesign((current) => ({
-      ...current,
-      beads: current.beads.filter((bead) => bead.key !== key),
-    }));
-  };
-
-  const moveBead = (index, direction) => {
-    setDesign((current) => {
-      const nextIndex = index + direction;
-      if (nextIndex < 0 || nextIndex >= current.beads.length) return current;
-      const next = [...current.beads];
-      [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
-      return { ...current, beads: next };
-    });
-  };
 
   const setCharm = (beadId) => {
     setDesign((current) => ({
       ...current,
       charm: {
         beadId,
-        attachmentPoint: current.charm?.attachmentPoint || "lowerLoop",
+        attachmentPoint: current.charm?.attachmentPoint || "hardwareLoop",
       },
     }));
+  };
+
+  const goToStep = (step) => {
+    const nextStep = (step + 3) % 3;
+    setActiveStep(nextStep);
+    stepPagesRef.current?.children[nextStep]?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "start",
+    });
+  };
+
+  const syncStepFromScroll = (event) => {
+    const element = event.currentTarget;
+    const nextStep = Math.round(element.scrollLeft / element.clientWidth);
+    setActiveStep(Math.max(0, Math.min(2, nextStep)));
   };
 
   return (
     <main className="app-shell">
       <section className="studio-stage" aria-label="Keychain preview">
-        <div className="stage-topline">
-          <div>
-            <p className="eyebrow">Keychain Studio</p>
-            <h1>Build your bead loot</h1>
-          </div>
-          <div className="save-slot" aria-label="Current design summary">
-            <span>{selectedBeads.length} beads</span>
-            <span>{selectedCharm ? "1 charm" : "no charm"}</span>
-          </div>
-        </div>
-
         <KeychainCanvas
           hardwareType={design.hardwareType}
           hardware={selectedHardware}
           cord={selectedCord}
-          beads={selectedBeads}
           charm={selectedCharm}
           charmAttachment={design.charm?.attachmentPoint || "lowerLoop"}
         />
 
         <div className="stage-actions">
-          <button type="button" className="primary-action" onClick={() => downloadPreview()}>
-            Download PNG
+          <button type="button" onClick={downloadPreviewImage}>
+            Download
           </button>
-          <button type="button" onClick={() => setDesign(defaultDesign)}>
-            Reset
+          <button type="button" onClick={() => setDesign(randomDesign())}>
+            Randomize
           </button>
         </div>
       </section>
 
       <section className="editor-panel" aria-label="Keychain controls">
-        <HardwarePicker design={design} setDesign={setDesign} />
-        <CordPicker selected={design.cordColor} setDesign={setDesign} />
-        <BeadTray filteredBeads={filteredBeads} filter={beadFilter} setFilter={setBeadFilter} addBead={addBead} />
-        <BeadSequence beads={selectedBeads} removeBead={removeBead} moveBead={moveBead} />
-        <CharmPicker design={design} setDesign={setDesign} setCharm={setCharm} selectedCharm={selectedCharm} />
+        <div className="receipt-header" aria-hidden="true">
+          <div className="receipt-title">
+            <span>✿</span>
+            <strong>Custom Order</strong>
+            <span>✿</span>
+          </div>
+          <div className="receipt-meta">
+            <span>Order # 0007824</span>
+            <span>05/18/2024&nbsp;&nbsp;11:32 AM</span>
+          </div>
+        </div>
+        <div className="mobile-step-tabs">
+          {["Hardware", "Cord", "Charm"].map((label, index) => (
+            <button
+              key={label}
+              type="button"
+              className={`step-tab ${activeStep === index ? "active" : ""}`}
+              onClick={() => goToStep(index)}
+              aria-label={`Show ${label} controls`}
+            >
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              <b>{label}</b>
+            </button>
+          ))}
+        </div>
+        <div className="step-pages" ref={stepPagesRef} onScroll={syncStepFromScroll}>
+          <HardwarePicker design={design} setDesign={setDesign} />
+          <CordPicker selected={design.cordColor} setDesign={setDesign} />
+          <CharmPicker design={design} setDesign={setDesign} setCharm={setCharm} selectedCharm={selectedCharm} />
+        </div>
+        <div className="mobile-nav">
+          <button type="button" className="mobile-nav-button" onClick={() => goToStep(activeStep - 1)}>
+            ← Prev
+          </button>
+          <button type="button" className="mobile-nav-button" onClick={() => goToStep(activeStep + 1)}>
+            Next →
+          </button>
+        </div>
       </section>
     </main>
   );
@@ -102,22 +111,6 @@ function HardwarePicker({ design, setDesign }) {
   return (
     <section className="tool-panel">
       <PanelHeader number="01" title="Hardware" />
-      <div className="segmented" role="group" aria-label="Hardware type">
-        <button
-          type="button"
-          className={design.hardwareType === "round" ? "active" : ""}
-          onClick={() => setDesign((current) => ({ ...current, hardwareType: "round" }))}
-        >
-          Round ring
-        </button>
-        <button
-          type="button"
-          className={design.hardwareType === "clasp" ? "active" : ""}
-          onClick={() => setDesign((current) => ({ ...current, hardwareType: "clasp" }))}
-        >
-          Clasp
-        </button>
-      </div>
       <SwatchGrid
         colors={hardwareColors}
         selected={design.hardwareColor}
@@ -142,64 +135,12 @@ function CordPicker({ selected, setDesign }) {
   );
 }
 
-function BeadTray({ filteredBeads, filter, setFilter, addBead }) {
-  const filters = ["all", "star", "round", "cube", "barrel", "diamond"];
-
-  return (
-    <section className="tool-panel bead-tool">
-      <PanelHeader number="03" title="Bead tray" />
-      <div className="chip-row" role="group" aria-label="Filter bead options">
-        {filters.map((item) => (
-          <button key={item} type="button" className={filter === item ? "active" : ""} onClick={() => setFilter(item)}>
-            {item}
-          </button>
-        ))}
-      </div>
-      <div className="bead-grid">
-        {filteredBeads.map((bead) => (
-          <button key={bead.id} type="button" className="bead-card" onClick={() => addBead(bead.id)}>
-            <img src={bead.src} alt="" />
-            <span>{bead.name}</span>
-          </button>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function BeadSequence({ beads, removeBead, moveBead }) {
-  return (
-    <section className="tool-panel">
-      <PanelHeader number="04" title="Strand order" />
-      <div className="sequence-list">
-        {beads.map((bead, index) => (
-          <div className="sequence-item" key={bead.key}>
-            <img src={bead.src} alt="" />
-            <span>{bead.name}</span>
-            <div>
-              <button type="button" onClick={() => moveBead(index, -1)} disabled={index === 0}>
-                Up
-              </button>
-              <button type="button" onClick={() => moveBead(index, 1)} disabled={index === beads.length - 1}>
-                Down
-              </button>
-              <button type="button" onClick={() => removeBead(bead.key)}>
-                Remove
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function CharmPicker({ design, setDesign, setCharm, selectedCharm }) {
-  const charmOptions = beads.filter((bead) => bead.suggestedUse.includes("charm"));
+  const charmOptions = charmBeads;
 
   return (
     <section className="tool-panel">
-      <PanelHeader number="05" title="Loop charm" />
+      <PanelHeader number="03" title="Loop charm" />
       <div className="segmented" role="group" aria-label="Charm attachment">
         <button
           type="button"
@@ -211,11 +152,11 @@ function CharmPicker({ design, setDesign, setCharm, selectedCharm }) {
             }))
           }
         >
-          Hardware loop
+          Inner
         </button>
         <button
           type="button"
-          className={design.charm?.attachmentPoint !== "hardwareLoop" ? "active" : ""}
+          className={design.charm?.attachmentPoint === "lowerLoop" ? "active" : ""}
           onClick={() =>
             setDesign((current) => ({
               ...current,
@@ -223,7 +164,14 @@ function CharmPicker({ design, setDesign, setCharm, selectedCharm }) {
             }))
           }
         >
-          Lower loop
+          Outer
+        </button>
+        <button
+          type="button"
+          className={!design.charm ? "active" : ""}
+          onClick={() => setDesign((current) => ({ ...current, charm: null }))}
+        >
+          No charm
         </button>
       </div>
       <div className="charm-strip">
@@ -239,9 +187,6 @@ function CharmPicker({ design, setDesign, setCharm, selectedCharm }) {
           </button>
         ))}
       </div>
-      <button type="button" className="full-width" onClick={() => setDesign((current) => ({ ...current, charm: null }))}>
-        Remove charm
-      </button>
     </section>
   );
 }
@@ -263,10 +208,11 @@ function SwatchGrid({ colors, selected, onPick, getMeta }) {
           key={color.id}
           type="button"
           className={selected === color.id ? "selected" : ""}
+          style={{ "--swatch": color.value, "--accent": color.accent || color.value }}
           onClick={() => onPick(color.id)}
           aria-label={`${color.name} ${getMeta(color)}`}
         >
-          <span style={{ "--swatch": color.value, "--accent": color.accent || color.value }} data-finish={color.finish || "cord"} />
+          <span data-finish={color.finish || "cord"} />
           <b>{color.name}</b>
           <small>{getMeta(color)}</small>
         </button>
@@ -275,13 +221,12 @@ function SwatchGrid({ colors, selected, onPick, getMeta }) {
   );
 }
 
-function KeychainCanvas({ hardwareType, hardware, cord, beads, charm, charmAttachment }) {
-  const beadSlots = beads.slice(0, 9);
+function KeychainCanvas({ hardwareType, hardware, cord, charm, charmAttachment }) {
   const isMetal = hardware.finish === "metal";
 
   return (
     <div className="canvas-wrap">
-      <svg id="keychain-preview-svg" viewBox="0 0 780 860" role="img" aria-label="Completed keychain preview">
+      <svg id="keychain-preview-svg" viewBox="0 0 780 888" role="img" aria-label="Completed keychain preview">
         <defs>
           <radialGradient id="matteHardware" cx="34%" cy="24%" r="72%">
             <stop offset="0%" stopColor="#ffffff" stopOpacity="0.55" />
@@ -296,6 +241,12 @@ function KeychainCanvas({ hardwareType, hardware, cord, beads, charm, charmAttac
             <stop offset="68%" stopColor={hardware.value} />
             <stop offset="100%" stopColor={isMetal && hardware.id === "gold" ? "#7a5318" : "#676b70"} />
           </linearGradient>
+          <linearGradient id="charmSilver" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="28%" stopColor="#cfd3d6" />
+            <stop offset="52%" stopColor="#f9fbfb" />
+            <stop offset="100%" stopColor="#8f969b" />
+          </linearGradient>
           <pattern id="cordBraid" width="18" height="18" patternUnits="userSpaceOnUse" patternTransform="rotate(35)">
             <rect width="18" height="18" fill={cord.value} />
             <path d="M0 1 H18 M0 9 H18 M0 17 H18" stroke={cord.accent} strokeWidth="4" opacity="0.55" />
@@ -307,34 +258,35 @@ function KeychainCanvas({ hardwareType, hardware, cord, beads, charm, charmAttac
           <filter id="tinyShadow" x="-30%" y="-30%" width="160%" height="160%">
             <feDropShadow dx="0" dy="7" stdDeviation="5" floodColor="#120c19" floodOpacity="0.25" />
           </filter>
+          <filter id="paperShadow" x="-12%" y="-12%" width="124%" height="124%">
+            <feDropShadow dx="0" dy="12" stdDeviation="11" floodColor="#2d210f" floodOpacity="0.22" />
+            <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#ffffff" floodOpacity="0.55" />
+          </filter>
         </defs>
 
-        <rect x="32" y="28" width="716" height="804" rx="34" fill="#fff7e8" />
-        <path d="M62 154 C168 62 314 56 428 120 C578 204 624 390 531 532 C448 658 254 674 146 555 C53 454 44 270 144 181" fill="none" stroke="#f9b9d4" strokeWidth="3" strokeDasharray="10 12" opacity="0.55" />
-
-        {hardwareType === "round" ? <RoundRing hardware={hardware} /> : <Clasp hardware={hardware} />}
-        <Cord cord={cord} hardwareType={hardwareType} />
-        <BeadStrand beads={beadSlots} />
-        {charm ? <Charm bead={charm} attachment={charmAttachment} /> : null}
-
-        <g className="sparkles" aria-hidden="true">
-          <path d="M612 148 l11 25 25 11 -25 11 -11 25 -11 -25 -25 -11 25 -11z" fill="#ffe15a" />
-          <path d="M146 701 l8 18 18 8 -18 8 -8 18 -8 -18 -18 -8 18 -8z" fill="#8df6dc" />
-          <circle cx="628" cy="690" r="9" fill="#ff74a8" />
-          <circle cx="122" cy="178" r="7" fill="#6ccfff" />
+        <g transform="translate(0 20)">
+          <path
+            d={wavyRectPath(86, 26, 608, 836, 44, 9)}
+            fill="#fff7e8"
+            stroke="#1734b7"
+            strokeWidth="5"
+            filter="url(#paperShadow)"
+          />
+          <g transform="translate(390 370) scale(1.18) translate(-390 -370)">
+            {hardwareType === "round" ? <RoundRing hardware={hardware} /> : <Clasp hardware={hardware} />}
+            <CordLoopSvg hardwareType={hardwareType} cord={cord} />
+            {charm ? <Charm bead={charm} attachment={charmAttachment} /> : null}
+          </g>
         </g>
       </svg>
     </div>
   );
 }
 
-function RoundRing() {
+function RoundRing({ hardware }) {
   return (
     <g filter="url(#softShadow)">
-      <circle cx="390" cy="148" r="90" fill="none" stroke="url(#metalHardware)" strokeWidth="30" strokeLinecap="round" />
-      <circle cx="333" cy="205" r="12" fill="url(#metalHardware)" stroke="#3b3327" strokeWidth="3" opacity="0.65" />
-      <path d="M318 232 l30 -18" stroke="#2f241c" strokeWidth="5" strokeLinecap="round" opacity="0.55" />
-      <path d="M322 78 C348 42 425 42 459 77" stroke="#fff" strokeWidth="7" strokeLinecap="round" opacity="0.55" />
+      <circle cx="390" cy="154" r="48" fill="none" stroke={hardware.value} strokeWidth="17" strokeLinecap="round" />
     </g>
   );
 }
@@ -342,74 +294,61 @@ function RoundRing() {
 function Clasp() {
   return (
     <g filter="url(#softShadow)">
-      <path d="M326 202 V116 C326 54 454 54 454 116 V192" fill="none" stroke="url(#metalHardware)" strokeWidth="30" strokeLinecap="round" />
-      <rect x="294" y="188" width="190" height="76" rx="18" fill="url(#metalHardware)" stroke="#35281e" strokeWidth="4" opacity="0.96" />
-      <circle cx="450" cy="226" r="18" fill="#fff7e8" stroke="url(#metalHardware)" strokeWidth="8" />
-      <circle cx="390" cy="306" r="50" fill="none" stroke="url(#metalHardware)" strokeWidth="18" />
-      <path d="M431 82 C452 100 462 136 450 174" stroke="#fff" strokeWidth="6" strokeLinecap="round" opacity="0.45" />
+      <path d="M354 178 V128 C354 92 426 92 426 128 V172" fill="none" stroke="url(#metalHardware)" strokeWidth="17" strokeLinecap="round" />
+      <rect x="336" y="170" width="108" height="44" rx="11" fill="url(#metalHardware)" stroke="#35281e" strokeWidth="2" opacity="0.96" />
+      <circle cx="424" cy="192" r="10" fill="#fff7e8" stroke="url(#metalHardware)" strokeWidth="4" />
+      <circle cx="390" cy="238" r="28" fill="none" stroke="url(#metalHardware)" strokeWidth="10" />
+      <path d="M415 108 C426 119 432 138 425 161" stroke="#fff" strokeWidth="4" strokeLinecap="round" opacity="0.45" />
     </g>
   );
 }
 
-function Cord({ hardwareType }) {
-  const startY = hardwareType === "round" ? 232 : 348;
+function CordLoopSvg({ hardwareType, cord }) {
+  const joinY = hardwareType === "round" ? 272 : 346;
+  const cordSvg = useMemo(() => {
+    const dark = shade(cord.value, -54);
+    const highlight = cord.accent || shade(cord.value, 42);
+    const coloredSvg = cordLoopSvgRaw
+      .replaceAll("#FF162A", cord.value)
+      .replaceAll("#D30012", cord.value)
+      .replaceAll("#990013", dark)
+      .replaceAll("#82000A", dark)
+      .replaceAll("#FF7885", highlight)
+      .replaceAll("#E1E1E1", "#f5f7f7");
+
+    return `data:image/svg+xml;utf8,${encodeURIComponent(coloredSvg)}`;
+  }, [cord]);
 
   return (
     <g filter="url(#tinyShadow)">
-      <path d={`M390 ${startY} C304 288 258 390 286 486 C310 570 470 570 496 486 C524 390 476 288 390 ${startY}`} fill="none" stroke="url(#cordBraid)" strokeWidth="30" strokeLinecap="round" />
-      <path d={`M390 ${startY} C304 288 258 390 286 486 C310 570 470 570 496 486 C524 390 476 288 390 ${startY}`} fill="none" stroke="#ffffff" strokeWidth="5" strokeLinecap="round" opacity="0.38" />
-      <circle cx="390" cy={startY + 6} r="22" fill="url(#cordBraid)" />
-    </g>
-  );
-}
-
-function BeadStrand({ beads }) {
-  const slots = [
-    [286, 403, -18],
-    [304, 468, 10],
-    [347, 515, -8],
-    [404, 530, 12],
-    [461, 512, -14],
-    [502, 464, 12],
-    [508, 397, -10],
-    [474, 334, 14],
-    [414, 304, -8],
-  ];
-
-  return (
-    <g filter="url(#tinyShadow)">
-      {beads.map((bead, index) => {
-        const [x, y, rotate] = slots[index] || slots[slots.length - 1];
-        const size = bead.shape === "star" ? 88 : 72;
-        return (
-          <image
-            key={bead.key}
-            href={bead.src}
-            x={x - size / 2}
-            y={y - size / 2}
-            width={size}
-            height={size}
-            transform={`rotate(${rotate} ${x} ${y})`}
-            preserveAspectRatio="xMidYMid meet"
-          />
-        );
-      })}
+      <image
+        href={cordSvg}
+        x="159"
+        y={joinY - 132}
+        width="462"
+        height="632"
+        preserveAspectRatio="xMidYMid meet"
+      />
     </g>
   );
 }
 
 function Charm({ bead, attachment }) {
-  const anchor = attachment === "hardwareLoop" ? { x: 320, y: 224 } : { x: 510, y: 493 };
-  const charm = attachment === "hardwareLoop" ? { x: 258, y: 302 } : { x: 574, y: 592 };
+  const charm = attachment === "hardwareLoop" ? { x: 318, y: 452, ringX: 318, ringY: 434 } : { x: 526, y: 400, ringX: 526, ringY: 382 };
+  const beadSize = getCanvasBeadSize(bead);
 
   return (
     <g filter="url(#tinyShadow)">
-      <path d={`M${anchor.x} ${anchor.y} C${anchor.x - 14} ${anchor.y + 28} ${charm.x + 12} ${charm.y - 50} ${charm.x} ${charm.y - 22}`} fill="none" stroke="#d8b35d" strokeWidth="7" strokeLinecap="round" />
-      <circle cx={anchor.x} cy={anchor.y} r="14" fill="none" stroke="url(#metalHardware)" strokeWidth="7" />
-      <circle cx={charm.x} cy={charm.y - 24} r="13" fill="none" stroke="url(#metalHardware)" strokeWidth="7" />
-      <image href={bead.src} x={charm.x - 54} y={charm.y - 20} width="108" height="108" preserveAspectRatio="xMidYMid meet" />
+      <circle cx={charm.ringX} cy={charm.ringY} r="9" fill="none" stroke="url(#charmSilver)" strokeWidth="3" />
+      <image href={bead.src} x={charm.x - beadSize / 2} y={charm.y - 20} width={beadSize} height={beadSize} preserveAspectRatio="xMidYMid meet" />
     </g>
   );
+}
+
+function getCanvasBeadSize(bead) {
+  if (!bead.id.startsWith("assorted-")) return 108;
+  if (bead.shape !== "round") return 54;
+  return 72;
 }
 
 function shade(hex, amount) {
@@ -421,51 +360,162 @@ function shade(hex, amount) {
   return `#${(b | (g << 8) | (r << 16)).toString(16).padStart(6, "0")}`;
 }
 
-async function downloadPreview() {
-  const svg = document.getElementById("keychain-preview-svg");
-  if (!svg) return;
+async function downloadPreviewImage() {
+  const sourceSvg = document.getElementById("keychain-preview-svg");
+  if (!sourceSvg) return;
 
-  const clone = svg.cloneNode(true);
-  const imageNodes = [...clone.querySelectorAll("image")];
+  const svgNamespace = "http://www.w3.org/2000/svg";
+  const exportWidth = 780;
+  const exportHeight = 980;
+  const clone = sourceSvg.cloneNode(true);
+  clone.setAttribute("xmlns", svgNamespace);
+  clone.setAttribute("viewBox", `0 0 ${exportWidth} ${exportHeight}`);
+  clone.setAttribute("width", String(exportWidth));
+  clone.setAttribute("height", String(exportHeight));
 
-  await Promise.all(
-    imageNodes.map(async (node) => {
-      const href = node.getAttribute("href");
-      if (!href || href.startsWith("data:")) return;
-      const response = await fetch(href);
+  await Promise.all([...clone.querySelectorAll("image")].map(async (image) => {
+    const href = image.getAttribute("href");
+    if (href && !href.startsWith("data:")) {
+      const response = await fetch(new URL(href, window.location.href).href);
       const blob = await response.blob();
-      const dataUrl = await blobToDataUrl(blob);
-      node.setAttribute("href", dataUrl);
-    }),
-  );
+      image.setAttribute("href", await blobToDataUrl(blob));
+    }
+  }));
+
+  let defs = clone.querySelector("defs");
+  if (!defs) {
+    defs = document.createElementNS(svgNamespace, "defs");
+    clone.prepend(defs);
+  }
+
+  const pattern = document.createElementNS(svgNamespace, "pattern");
+  pattern.setAttribute("id", "downloadChecker");
+  pattern.setAttribute("width", "160");
+  pattern.setAttribute("height", "160");
+  pattern.setAttribute("patternUnits", "userSpaceOnUse");
+
+  const blueSquare = document.createElementNS(svgNamespace, "rect");
+  blueSquare.setAttribute("width", "160");
+  blueSquare.setAttribute("height", "160");
+  blueSquare.setAttribute("fill", "#3179ed");
+
+  const creamA = document.createElementNS(svgNamespace, "rect");
+  creamA.setAttribute("width", "80");
+  creamA.setAttribute("height", "80");
+  creamA.setAttribute("fill", "#fff7e8");
+
+  const creamB = document.createElementNS(svgNamespace, "rect");
+  creamB.setAttribute("x", "80");
+  creamB.setAttribute("y", "80");
+  creamB.setAttribute("width", "80");
+  creamB.setAttribute("height", "80");
+  creamB.setAttribute("fill", "#fff7e8");
+
+  pattern.append(blueSquare, creamA, creamB);
+  defs.append(pattern);
+
+  const background = document.createElementNS(svgNamespace, "rect");
+  background.setAttribute("x", "0");
+  background.setAttribute("y", "0");
+  background.setAttribute("width", String(exportWidth));
+  background.setAttribute("height", String(exportHeight));
+  background.setAttribute("fill", "url(#downloadChecker)");
+  defs.after(background);
 
   const svgText = new XMLSerializer().serializeToString(clone);
-  const blob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const image = new Image();
+  const svgBlob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
+  const svgUrl = URL.createObjectURL(svgBlob);
 
-  image.onload = () => {
+  try {
+    const image = new Image();
+    image.decoding = "async";
+    const loaded = new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = reject;
+    });
+    image.src = svgUrl;
+    await loaded;
+
+    const scale = 2;
     const canvas = document.createElement("canvas");
-    canvas.width = 1560;
-    canvas.height = 1720;
+    canvas.width = exportWidth * scale;
+    canvas.height = exportHeight * scale;
     const context = canvas.getContext("2d");
-    context.fillStyle = "#fff7e8";
-    context.fillRect(0, 0, canvas.width, canvas.height);
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
-    URL.revokeObjectURL(url);
-    const link = document.createElement("a");
-    link.download = "keychain-studio-design.png";
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-  };
 
-  image.src = url;
+    const pngBlob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+    const pngUrl = URL.createObjectURL(pngBlob);
+    const link = document.createElement("a");
+    link.href = pngUrl;
+    link.download = "keychain-studio.png";
+    link.click();
+    URL.revokeObjectURL(pngUrl);
+  } finally {
+    URL.revokeObjectURL(svgUrl);
+  }
 }
 
 function blobToDataUrl(blob) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
+}
+
+function wavyRectPath(x, y, width, height, wavelength, amplitude) {
+  const right = x + width;
+  const bottom = y + height;
+  const corner = 40;
+  let path = `M ${x + corner} ${y}`;
+
+  const waveEdge = (from, to, fixed, axis) => {
+    const distance = to - from;
+    const count = Math.max(1, Math.round(Math.abs(distance) / wavelength));
+    const step = distance / count;
+    let segment = "";
+
+    for (let i = 0; i < count; i += 1) {
+      const start = from + step * i;
+      const end = from + step * (i + 1);
+      const mid = (start + end) / 2;
+      const wave = i % 2 === 0 ? amplitude : -amplitude;
+
+      if (axis === "top") segment += ` Q ${mid} ${fixed + wave} ${end} ${fixed}`;
+      if (axis === "right") segment += ` Q ${fixed - wave} ${mid} ${fixed} ${end}`;
+      if (axis === "bottom") segment += ` Q ${mid} ${fixed - wave} ${end} ${fixed}`;
+      if (axis === "left") segment += ` Q ${fixed + wave} ${mid} ${fixed} ${end}`;
+    }
+
+    return segment;
+  };
+
+  path += waveEdge(x + corner, right - corner, y, "top");
+  path += ` Q ${right} ${y} ${right} ${y + corner}`;
+  path += waveEdge(y + corner, bottom - corner, right, "right");
+  path += ` Q ${right} ${bottom} ${right - corner} ${bottom}`;
+  path += waveEdge(right - corner, x + corner, bottom, "bottom");
+  path += ` Q ${x} ${bottom} ${x} ${bottom - corner}`;
+  path += waveEdge(bottom - corner, y + corner, x, "left");
+  path += ` Q ${x} ${y} ${x + corner} ${y}`;
+
+  return `${path} Z`;
+}
+
+function randomDesign() {
+  return {
+    hardwareType: "round",
+    hardwareColor: pick(hardwareColors).id,
+    cordColor: pick(cordColors).id,
+    beads: [],
+    charm: {
+      beadId: pick(charmBeads).id,
+      attachmentPoint: pick(["hardwareLoop", "lowerLoop"]),
+    },
+  };
+}
+
+function pick(items) {
+  return items[Math.floor(Math.random() * items.length)];
 }
