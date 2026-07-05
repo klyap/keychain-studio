@@ -12,6 +12,15 @@ export default function App() {
   const [activeStep, setActiveStep] = useState(0);
   const stepPagesRef = useRef(null);
   const charms = getDesignCharms(design);
+  const order = useMemo(
+    () => ({
+      number: String(Math.floor(1000000 + Math.random() * 9000000)),
+      placedAt: new Date()
+        .toLocaleString("en-US", { month: "2-digit", day: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+        .replace(",", "  "),
+    }),
+    [],
+  );
 
   const selectedHardware = hardwareById.get(design.hardwareColor) || hardwareColors[0];
   const selectedCord = cordById.get(design.cordColor) || cordColors[0];
@@ -28,7 +37,6 @@ export default function App() {
           attachmentPoint: current.charmAttachment || "hardwareLoop",
         },
       ],
-      charm: null,
     }));
   };
 
@@ -36,7 +44,6 @@ export default function App() {
     setDesign((current) => ({
       ...current,
       charms: getDesignCharms(current).filter((charm) => charm.id !== charmId),
-      charm: null,
     }));
   };
 
@@ -44,7 +51,6 @@ export default function App() {
     setDesign((current) => ({
       ...current,
       charms: getDesignCharms(current).map((charm) => charm.id === charmId ? { ...charm, ...position } : charm),
-      charm: null,
     }));
   };
 
@@ -53,7 +59,6 @@ export default function App() {
       ...current,
       charmAttachment: attachmentPoint,
       charms: getDesignCharms(current),
-      charm: null,
     }));
   };
 
@@ -61,27 +66,7 @@ export default function App() {
     setDesign((current) => ({
       ...current,
       charms: [],
-      charm: null,
     }));
-  };
-
-  const randomize = () => {
-    const nextAttachment = pick(["hardwareLoop", "lowerLoop"]);
-    setDesign({
-      hardwareType: "round",
-      hardwareColor: pick(hardwareColors).id,
-      cordColor: pick(cordColors).id,
-      beads: [],
-      charmAttachment: nextAttachment,
-      charms: [
-        {
-          id: `charm-${Date.now()}`,
-          ...getCharmStart(nextAttachment),
-          beadId: pick(charmBeads).id,
-          attachmentPoint: nextAttachment,
-        },
-      ],
-    });
   };
 
   const selectedCharmBeadIds = new Set(charms.map((charm) => charm.beadId));
@@ -115,10 +100,10 @@ export default function App() {
 
         <div className="stage-actions">
           <button type="button" onClick={downloadPreviewImage}>
-            Download
+            Save PNG
           </button>
-          <button type="button" onClick={randomize}>
-            Randomize
+          <button type="button" onClick={() => setDesign(randomDesign())}>
+            Surprise me
           </button>
         </div>
       </section>
@@ -131,8 +116,8 @@ export default function App() {
             <span>✿</span>
           </div>
           <div className="receipt-meta">
-            <span>Order # 0007824</span>
-            <span>05/18/2024&nbsp;&nbsp;11:32 AM</span>
+            <span>Order # {order.number}</span>
+            <span>{order.placedAt}</span>
           </div>
         </div>
         <div className="mobile-step-tabs">
@@ -246,15 +231,17 @@ function CharmPicker({ charms, charmAttachment, selectedCharmBeadIds, addCharm, 
         ))}
       </div>
       {charms.length > 0 ? (
-        <div className="selected-charms" aria-label="Selected charms">
-          {charms.map((charm, index) => {
+        <div className="charm-lines" aria-label="Charms on this order">
+          {charms.map((charm) => {
             const bead = beadById.get(charm.beadId);
             if (!bead) return null;
 
             return (
               <button key={charm.id} type="button" onClick={() => removeCharm(charm.id)} aria-label={`Remove ${bead.name}`}>
                 <img src={bead.src} alt="" />
-                <span>Remove {index + 1}</span>
+                <span className="charm-name">{bead.name}</span>
+                <i className="leader" aria-hidden="true" />
+                <b className="remove-mark">✕</b>
               </button>
             );
           })}
@@ -360,10 +347,11 @@ function KeychainCanvas({ hardwareType, hardware, cord, charms, onMoveCharm }) {
           <path
             d={wavyRectPath(86, 26, 608, 836, 44, 9)}
             fill="#fff9ef"
-            stroke="#278BEA"
-            strokeWidth="5"
+            stroke="#c5161d"
+            strokeWidth="4"
             filter="url(#paperShadow)"
           />
+          <BackingCardPrint />
           <g transform="translate(390 370) scale(1.18) translate(-390 -370)">
             {hardwareType === "round" ? <RoundRing hardware={hardware} /> : <Clasp hardware={hardware} />}
             <CordLoopSvg hardwareType={hardwareType} cord={cord} />
@@ -385,9 +373,55 @@ function KeychainCanvas({ hardwareType, hardware, cord, charms, onMoveCharm }) {
               );
             })}
           </g>
+          <StapleTacks />
         </g>
       </svg>
     </div>
+  );
+}
+
+const printMono = "'Space Mono', 'Courier New', monospace";
+
+function BackingCardPrint() {
+  const barWidths = [3, 1, 2, 1, 1, 3, 2, 1, 3, 1, 1, 2, 3, 1, 2, 2, 1, 3, 1, 2];
+
+  let barX = 0;
+  const bars = barWidths.map((width, index) => {
+    const bar = index % 2 === 0 ? <rect key={index} x={barX} y="0" width={width * 2.4} height="30" fill="#46311f" /> : null;
+    barX += width * 2.4 + 2.4;
+    return bar;
+  });
+
+  return (
+    <g aria-hidden="true">
+      <g fill="#c5161d" fontFamily={printMono} fontWeight="700">
+        <text x="122" y="86" fontSize="27" letterSpacing="3">KEYCHAIN</text>
+        <text x="122" y="115" fontSize="27" letterSpacing="3">STUDIO</text>
+        <text x="122" y="140" fontSize="12" fontWeight="400" letterSpacing="1.5">HAND-TIED · ONE OF ONE</text>
+      </g>
+      <g transform="translate(196 792) rotate(-8)" opacity="0.82">
+        <rect x="-96" y="-27" width="192" height="54" rx="9" fill="none" stroke="#c5161d" strokeWidth="3" />
+        <rect x="-89" y="-20" width="178" height="40" rx="6" fill="none" stroke="#c5161d" strokeWidth="1.5" />
+        <text x="0" y="7" textAnchor="middle" fontFamily={printMono} fontWeight="700" fontSize="19" letterSpacing="2" fill="#c5161d">
+          MADE TO ORDER
+        </text>
+      </g>
+      <g transform="translate(556 780)">
+        {bars}
+        <text x="0" y="48" fontFamily={printMono} fontSize="12" letterSpacing="2" fill="#46311f">
+          KCS-0100-STU
+        </text>
+      </g>
+    </g>
+  );
+}
+
+function StapleTacks() {
+  return (
+    <g aria-hidden="true" filter="url(#tinyShadow)">
+      <rect x="-15" y="-3.5" width="30" height="7" rx="3.5" transform="translate(352 73) rotate(48)" fill="url(#charmSilver)" stroke="#6f757a" strokeWidth="0.8" />
+      <rect x="-15" y="-3.5" width="30" height="7" rx="3.5" transform="translate(428 73) rotate(-48)" fill="url(#charmSilver)" stroke="#6f757a" strokeWidth="0.8" />
+    </g>
   );
 }
 
@@ -404,7 +438,7 @@ function Clasp() {
     <g filter="url(#softShadow)">
       <path d="M354 178 V128 C354 92 426 92 426 128 V172" fill="none" stroke="url(#metalHardware)" strokeWidth="17" strokeLinecap="round" />
       <rect x="336" y="170" width="108" height="44" rx="11" fill="url(#metalHardware)" stroke="#35281e" strokeWidth="2" opacity="0.96" />
-      <circle cx="424" cy="192" r="10" fill="#FDFFBE" stroke="url(#metalHardware)" strokeWidth="4" />
+      <circle cx="424" cy="192" r="10" fill="#fff8ec" stroke="url(#metalHardware)" strokeWidth="4" />
       <circle cx="390" cy="238" r="28" fill="none" stroke="url(#metalHardware)" strokeWidth="10" />
       <path d="M415 108 C426 119 432 138 425 161" stroke="#fff" strokeWidth="4" strokeLinecap="round" opacity="0.45" />
     </g>
@@ -541,29 +575,27 @@ async function downloadPreviewImage() {
   }
 
   const pattern = document.createElementNS(svgNamespace, "pattern");
-  pattern.setAttribute("id", "downloadChecker");
-  pattern.setAttribute("width", "160");
-  pattern.setAttribute("height", "160");
+  pattern.setAttribute("id", "downloadGingham");
+  pattern.setAttribute("width", "52");
+  pattern.setAttribute("height", "52");
   pattern.setAttribute("patternUnits", "userSpaceOnUse");
 
-  const blueSquare = document.createElementNS(svgNamespace, "rect");
-  blueSquare.setAttribute("width", "160");
-  blueSquare.setAttribute("height", "160");
-  blueSquare.setAttribute("fill", "#B3FBC5");
+  const clothBase = document.createElementNS(svgNamespace, "rect");
+  clothBase.setAttribute("width", "52");
+  clothBase.setAttribute("height", "52");
+  clothBase.setAttribute("fill", "#fff3df");
 
-  const creamA = document.createElementNS(svgNamespace, "rect");
-  creamA.setAttribute("width", "80");
-  creamA.setAttribute("height", "80");
-  creamA.setAttribute("fill", "#FDFFBE");
+  const stripeAcross = document.createElementNS(svgNamespace, "rect");
+  stripeAcross.setAttribute("width", "52");
+  stripeAcross.setAttribute("height", "26");
+  stripeAcross.setAttribute("fill", "rgba(224, 88, 74, 0.16)");
 
-  const creamB = document.createElementNS(svgNamespace, "rect");
-  creamB.setAttribute("x", "80");
-  creamB.setAttribute("y", "80");
-  creamB.setAttribute("width", "80");
-  creamB.setAttribute("height", "80");
-  creamB.setAttribute("fill", "#FDFFBE");
+  const stripeDown = document.createElementNS(svgNamespace, "rect");
+  stripeDown.setAttribute("width", "26");
+  stripeDown.setAttribute("height", "52");
+  stripeDown.setAttribute("fill", "rgba(224, 88, 74, 0.16)");
 
-  pattern.append(blueSquare, creamA, creamB);
+  pattern.append(clothBase, stripeAcross, stripeDown);
   defs.append(pattern);
 
   const background = document.createElementNS(svgNamespace, "rect");
@@ -571,7 +603,7 @@ async function downloadPreviewImage() {
   background.setAttribute("y", "0");
   background.setAttribute("width", String(exportWidth));
   background.setAttribute("height", String(exportHeight));
-  background.setAttribute("fill", "url(#downloadChecker)");
+  background.setAttribute("fill", "url(#downloadGingham)");
   defs.after(background);
 
   const svgText = new XMLSerializer().serializeToString(clone);
