@@ -6,6 +6,11 @@ const beadById = new Map(beads.map((bead) => [bead.id, bead]));
 const hardwareById = new Map(hardwareColors.map((color) => [color.id, color]));
 const cordById = new Map(cordColors.map((color) => [color.id, color]));
 const charmBeads = beads.filter((bead) => bead.suggestedUse.includes("charm"));
+const MAX_CHARMS = 2;
+const charmStarts = [
+  { x: 318, y: 452 },
+  { x: 526, y: 400 },
+];
 
 export default function App() {
   const [design, setDesign] = useState(defaultDesign);
@@ -25,19 +30,28 @@ export default function App() {
   const selectedHardware = hardwareById.get(design.hardwareColor) || hardwareColors[0];
   const selectedCord = cordById.get(design.cordColor) || cordColors[0];
 
-  const addCharm = (beadId) => {
-    setDesign((current) => ({
-      ...current,
-      charms: [
-        ...getDesignCharms(current),
-        {
-          id: `charm-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-          ...getCharmStart(current.charmAttachment || "hardwareLoop"),
-          beadId,
-          attachmentPoint: current.charmAttachment || "hardwareLoop",
-        },
-      ],
-    }));
+  const toggleCharm = (beadId) => {
+    setDesign((current) => {
+      const currentCharms = getDesignCharms(current);
+      const existing = currentCharms.find((charm) => charm.beadId === beadId);
+
+      if (existing) {
+        return { ...current, charms: currentCharms.filter((charm) => charm.id !== existing.id) };
+      }
+      if (currentCharms.length >= MAX_CHARMS) return current;
+
+      return {
+        ...current,
+        charms: [
+          ...currentCharms,
+          {
+            id: `charm-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+            ...charmStarts[currentCharms.length],
+            beadId,
+          },
+        ],
+      };
+    });
   };
 
   const removeCharm = (charmId) => {
@@ -51,21 +65,6 @@ export default function App() {
     setDesign((current) => ({
       ...current,
       charms: getDesignCharms(current).map((charm) => charm.id === charmId ? { ...charm, ...position } : charm),
-    }));
-  };
-
-  const setCharmAttachment = (attachmentPoint) => {
-    setDesign((current) => ({
-      ...current,
-      charmAttachment: attachmentPoint,
-      charms: getDesignCharms(current),
-    }));
-  };
-
-  const clearCharms = () => {
-    setDesign((current) => ({
-      ...current,
-      charms: [],
     }));
   };
 
@@ -139,12 +138,9 @@ export default function App() {
           <CordPicker selected={design.cordColor} setDesign={setDesign} />
           <CharmPicker
             charms={charms}
-            charmAttachment={design.charmAttachment || "hardwareLoop"}
             selectedCharmBeadIds={selectedCharmBeadIds}
-            addCharm={addCharm}
+            toggleCharm={toggleCharm}
             removeCharm={removeCharm}
-            clearCharms={clearCharms}
-            setCharmAttachment={setCharmAttachment}
           />
         </div>
         <div className="mobile-nav">
@@ -188,47 +184,29 @@ function CordPicker({ selected, setDesign }) {
   );
 }
 
-function CharmPicker({ charms, charmAttachment, selectedCharmBeadIds, addCharm, removeCharm, clearCharms, setCharmAttachment }) {
-  const charmOptions = charmBeads;
+function CharmPicker({ charms, selectedCharmBeadIds, toggleCharm, removeCharm }) {
+  const atLimit = charms.length >= MAX_CHARMS;
 
   return (
     <section className="tool-panel">
-      <PanelHeader number="03" title="Loop charm" />
-      <div className="segmented" role="group" aria-label="Charm attachment">
-        <button
-          type="button"
-          className={charmAttachment === "hardwareLoop" ? "active" : ""}
-          onClick={() => setCharmAttachment("hardwareLoop")}
-        >
-          Inner
-        </button>
-        <button
-          type="button"
-          className={charmAttachment === "lowerLoop" ? "active" : ""}
-          onClick={() => setCharmAttachment("lowerLoop")}
-        >
-          Outer
-        </button>
-        <button
-          type="button"
-          className={charms.length === 0 ? "active" : ""}
-          onClick={clearCharms}
-        >
-          Clear
-        </button>
-      </div>
+      <PanelHeader number="03" title={`Charms · max ${MAX_CHARMS}`} />
       <div className="charm-strip">
-        {charmOptions.map((bead) => (
-          <button
-            key={bead.id}
-            type="button"
-            className={selectedCharmBeadIds.has(bead.id) ? "active" : ""}
-            onClick={() => addCharm(bead.id)}
-            aria-label={`Add ${bead.name} charm`}
-          >
-            <img src={bead.src} alt="" />
-          </button>
-        ))}
+        {charmBeads.map((bead) => {
+          const selected = selectedCharmBeadIds.has(bead.id);
+
+          return (
+            <button
+              key={bead.id}
+              type="button"
+              className={selected ? "active" : ""}
+              disabled={atLimit && !selected}
+              onClick={() => toggleCharm(bead.id)}
+              aria-label={selected ? `Remove ${bead.name} charm` : `Add ${bead.name} charm`}
+            >
+              <img src={bead.src} alt="" />
+            </button>
+          );
+        })}
       </div>
       {charms.length > 0 ? (
         <div className="charm-lines" aria-label="Charms on this order">
@@ -488,9 +466,8 @@ function Charm({ bead, charm, onPointerDown }) {
 }
 
 function getCharmAnchor(charm) {
-  const fallback = getCharmStart(charm.attachmentPoint || "hardwareLoop");
-  const x = Number.isFinite(charm.x) ? charm.x : fallback.x;
-  const y = Number.isFinite(charm.y) ? charm.y : fallback.y;
+  const x = Number.isFinite(charm.x) ? charm.x : charmStarts[0].x;
+  const y = Number.isFinite(charm.y) ? charm.y : charmStarts[0].y;
 
   return { x, y, ringX: x, ringY: y - 18 };
 }
@@ -523,18 +500,8 @@ function getDesignCharms(design) {
   if (Array.isArray(design.charms)) return design.charms;
   if (!design.charm) return [];
 
-  return [
-    {
-      id: "charm-1",
-      ...getCharmStart(design.charm.attachmentPoint || "hardwareLoop"),
-      beadId: design.charm.beadId,
-      attachmentPoint: design.charm.attachmentPoint || "hardwareLoop",
-    },
-  ];
-}
-
-function getCharmStart(attachmentPoint) {
-  return attachmentPoint === "lowerLoop" ? { x: 526, y: 400 } : { x: 318, y: 452 };
+  const start = design.charm.attachmentPoint === "lowerLoop" ? charmStarts[1] : charmStarts[0];
+  return [{ id: "charm-1", ...start, beadId: design.charm.beadId }];
 }
 
 function shade(hex, amount) {
@@ -688,15 +655,19 @@ function wavyRectPath(x, y, width, height, wavelength, amplitude) {
 }
 
 function randomDesign() {
-  const attachmentPoint = pick(["hardwareLoop", "lowerLoop"]);
+  const count = 1 + Math.floor(Math.random() * MAX_CHARMS);
+  const shuffledBeads = [...charmBeads].sort(() => Math.random() - 0.5).slice(0, count);
 
   return {
     hardwareType: "round",
     hardwareColor: pick(hardwareColors).id,
     cordColor: pick(cordColors).id,
     beads: [],
-    charmAttachment: attachmentPoint,
-    charms: [{ id: `charm-${Date.now()}`, ...getCharmStart(attachmentPoint), beadId: pick(charmBeads).id, attachmentPoint }],
+    charms: shuffledBeads.map((bead, index) => ({
+      id: `charm-${Date.now()}-${index}`,
+      ...charmStarts[index],
+      beadId: bead.id,
+    })),
   };
 }
 

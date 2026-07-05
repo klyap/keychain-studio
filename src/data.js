@@ -116,6 +116,5 @@ export const defaultDesign = {
   hardwareColor: "gold",
   cordColor: "red",
   beads: [],
-  charmAttachment: "hardwareLoop",
-  charms: [{ id: "charm-1", beadId: "star-04-yellow-top-right", attachmentPoint: "hardwareLoop", x: 318, y: 452 }],
+  charms: [{ id: "charm-1", beadId: "star-04-yellow-top-right", x: 318, y: 452 }],
 };

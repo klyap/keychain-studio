@@ -243,63 +243,6 @@ p {
   letter-spacing: 0.05em;
 }
 
-.segmented {
-  display: grid;
-  gap: 16px;
-  margin-bottom: 10px;
-}
-
-.tool-panel .segmented[aria-label="Charm attachment"] {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.segmented button {
-  position: relative;
-  min-height: 44px;
-  padding: 10px 12px 10px 46px;
-  border: 1px dashed rgba(70, 49, 31, 0.42);
-  border-radius: 14px;
-  color: var(--brown);
-  background: rgba(255, 255, 255, 0.45);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.58);
-  font-family: var(--mono);
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
-
-.segmented button::before {
-  content: "";
-  position: absolute;
-  left: 13px;
-  top: 50%;
-  width: 21px;
-  height: 21px;
-  transform: translateY(-50%);
-  display: grid;
-  place-items: center;
-  border: 2px solid rgba(70, 49, 31, 0.55);
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.68);
-  color: var(--paper);
-  font-size: 0.85rem;
-  line-height: 1;
-}
-
-.segmented button.active {
-  color: var(--ink);
-  background: var(--sticker);
-  border-color: rgba(197, 22, 29, 0.4);
-}
-
-.segmented button.active::before {
-  content: "✓";
-  border-color: var(--ink);
-  background: var(--ink);
-}
-
 .swatch-grid {
   display: grid;
   grid-template-columns: repeat(8, minmax(0, 1fr));
@@ -699,40 +642,6 @@ p {
 
   .panel-header {
     display: none;
-  }
-
-  .segmented {
-    gap: 12px;
-    margin-bottom: 14px;
-  }
-
-  .tool-panel .segmented[aria-label="Charm attachment"] {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .segmented button {
-    min-height: 34px;
-    padding: 5px 10px;
-    border: 1px solid var(--ink);
-    border-radius: 999px;
-    color: var(--ink);
-    background: var(--paper);
-    box-shadow: none;
-    font-size: 0.78rem;
-    letter-spacing: 0;
-  }
-
-  .segmented button::before,
-  .segmented button::after {
-    display: none;
-  }
-
-  .segmented button.active {
-    border-color: var(--ink);
-    color: var(--ink);
-    background: var(--sticker);
-    box-shadow: none;
   }
 
   .swatch-grid {
