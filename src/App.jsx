@@ -11,20 +11,80 @@ export default function App() {
   const [design, setDesign] = useState(defaultDesign);
   const [activeStep, setActiveStep] = useState(0);
   const stepPagesRef = useRef(null);
+  const charms = getDesignCharms(design);
 
   const selectedHardware = hardwareById.get(design.hardwareColor) || hardwareColors[0];
   const selectedCord = cordById.get(design.cordColor) || cordColors[0];
-  const selectedCharm = design.charm ? beadById.get(design.charm.beadId) : null;
 
-  const setCharm = (beadId) => {
+  const addCharm = (beadId) => {
     setDesign((current) => ({
       ...current,
-      charm: {
-        beadId,
-        attachmentPoint: current.charm?.attachmentPoint || "hardwareLoop",
-      },
+      charms: [
+        ...getDesignCharms(current),
+        {
+          id: `charm-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          ...getCharmStart(current.charmAttachment || "hardwareLoop"),
+          beadId,
+          attachmentPoint: current.charmAttachment || "hardwareLoop",
+        },
+      ],
+      charm: null,
     }));
   };
+
+  const removeCharm = (charmId) => {
+    setDesign((current) => ({
+      ...current,
+      charms: getDesignCharms(current).filter((charm) => charm.id !== charmId),
+      charm: null,
+    }));
+  };
+
+  const moveCharm = (charmId, position) => {
+    setDesign((current) => ({
+      ...current,
+      charms: getDesignCharms(current).map((charm) => charm.id === charmId ? { ...charm, ...position } : charm),
+      charm: null,
+    }));
+  };
+
+  const setCharmAttachment = (attachmentPoint) => {
+    setDesign((current) => ({
+      ...current,
+      charmAttachment: attachmentPoint,
+      charms: getDesignCharms(current),
+      charm: null,
+    }));
+  };
+
+  const clearCharms = () => {
+    setDesign((current) => ({
+      ...current,
+      charms: [],
+      charm: null,
+    }));
+  };
+
+  const randomize = () => {
+    const nextAttachment = pick(["hardwareLoop", "lowerLoop"]);
+    setDesign({
+      hardwareType: "round",
+      hardwareColor: pick(hardwareColors).id,
+      cordColor: pick(cordColors).id,
+      beads: [],
+      charmAttachment: nextAttachment,
+      charms: [
+        {
+          id: `charm-${Date.now()}`,
+          ...getCharmStart(nextAttachment),
+          beadId: pick(charmBeads).id,
+          attachmentPoint: nextAttachment,
+        },
+      ],
+    });
+  };
+
+  const selectedCharmBeadIds = new Set(charms.map((charm) => charm.beadId));
 
   const goToStep = (step) => {
     const nextStep = (step + 3) % 3;
@@ -49,15 +109,15 @@ export default function App() {
           hardwareType={design.hardwareType}
           hardware={selectedHardware}
           cord={selectedCord}
-          charm={selectedCharm}
-          charmAttachment={design.charm?.attachmentPoint || "lowerLoop"}
+          charms={charms}
+          onMoveCharm={moveCharm}
         />
 
         <div className="stage-actions">
           <button type="button" onClick={downloadPreviewImage}>
             Download
           </button>
-          <button type="button" onClick={() => setDesign(randomDesign())}>
+          <button type="button" onClick={randomize}>
             Randomize
           </button>
         </div>
@@ -92,7 +152,15 @@ export default function App() {
         <div className="step-pages" ref={stepPagesRef} onScroll={syncStepFromScroll}>
           <HardwarePicker design={design} setDesign={setDesign} />
           <CordPicker selected={design.cordColor} setDesign={setDesign} />
-          <CharmPicker design={design} setDesign={setDesign} setCharm={setCharm} selectedCharm={selectedCharm} />
+          <CharmPicker
+            charms={charms}
+            charmAttachment={design.charmAttachment || "hardwareLoop"}
+            selectedCharmBeadIds={selectedCharmBeadIds}
+            addCharm={addCharm}
+            removeCharm={removeCharm}
+            clearCharms={clearCharms}
+            setCharmAttachment={setCharmAttachment}
+          />
         </div>
         <div className="mobile-nav">
           <button type="button" className="mobile-nav-button" onClick={() => goToStep(activeStep - 1)}>
@@ -135,7 +203,7 @@ function CordPicker({ selected, setDesign }) {
   );
 }
 
-function CharmPicker({ design, setDesign, setCharm, selectedCharm }) {
+function CharmPicker({ charms, charmAttachment, selectedCharmBeadIds, addCharm, removeCharm, clearCharms, setCharmAttachment }) {
   const charmOptions = charmBeads;
 
   return (
@@ -144,34 +212,24 @@ function CharmPicker({ design, setDesign, setCharm, selectedCharm }) {
       <div className="segmented" role="group" aria-label="Charm attachment">
         <button
           type="button"
-          className={design.charm?.attachmentPoint === "hardwareLoop" ? "active" : ""}
-          onClick={() =>
-            setDesign((current) => ({
-              ...current,
-              charm: { beadId: current.charm?.beadId || charmOptions[0].id, attachmentPoint: "hardwareLoop" },
-            }))
-          }
+          className={charmAttachment === "hardwareLoop" ? "active" : ""}
+          onClick={() => setCharmAttachment("hardwareLoop")}
         >
           Inner
         </button>
         <button
           type="button"
-          className={design.charm?.attachmentPoint === "lowerLoop" ? "active" : ""}
-          onClick={() =>
-            setDesign((current) => ({
-              ...current,
-              charm: { beadId: current.charm?.beadId || charmOptions[0].id, attachmentPoint: "lowerLoop" },
-            }))
-          }
+          className={charmAttachment === "lowerLoop" ? "active" : ""}
+          onClick={() => setCharmAttachment("lowerLoop")}
         >
           Outer
         </button>
         <button
           type="button"
-          className={!design.charm ? "active" : ""}
-          onClick={() => setDesign((current) => ({ ...current, charm: null }))}
+          className={charms.length === 0 ? "active" : ""}
+          onClick={clearCharms}
         >
-          No charm
+          Clear
         </button>
       </div>
       <div className="charm-strip">
@@ -179,14 +237,29 @@ function CharmPicker({ design, setDesign, setCharm, selectedCharm }) {
           <button
             key={bead.id}
             type="button"
-            className={selectedCharm?.id === bead.id ? "active" : ""}
-            onClick={() => setCharm(bead.id)}
-            aria-label={`Use ${bead.name} as charm`}
+            className={selectedCharmBeadIds.has(bead.id) ? "active" : ""}
+            onClick={() => addCharm(bead.id)}
+            aria-label={`Add ${bead.name} charm`}
           >
             <img src={bead.src} alt="" />
           </button>
         ))}
       </div>
+      {charms.length > 0 ? (
+        <div className="selected-charms" aria-label="Selected charms">
+          {charms.map((charm, index) => {
+            const bead = beadById.get(charm.beadId);
+            if (!bead) return null;
+
+            return (
+              <button key={charm.id} type="button" onClick={() => removeCharm(charm.id)} aria-label={`Remove ${bead.name}`}>
+                <img src={bead.src} alt="" />
+                <span>Remove {index + 1}</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -221,12 +294,31 @@ function SwatchGrid({ colors, selected, onPick, getMeta }) {
   );
 }
 
-function KeychainCanvas({ hardwareType, hardware, cord, charm, charmAttachment }) {
+function KeychainCanvas({ hardwareType, hardware, cord, charms, onMoveCharm }) {
   const isMetal = hardware.finish === "metal";
+  const svgRef = useRef(null);
+  const [dragCharmId, setDragCharmId] = useState(null);
+
+  const moveDraggedCharm = (event) => {
+    if (!dragCharmId || !svgRef.current) return;
+    onMoveCharm(dragCharmId, getSvgCharmPosition(event, svgRef.current));
+  };
+
+  const stopDraggingCharm = () => setDragCharmId(null);
 
   return (
     <div className="canvas-wrap">
-      <svg id="keychain-preview-svg" viewBox="0 0 780 888" role="img" aria-label="Completed keychain preview">
+      <svg
+        id="keychain-preview-svg"
+        ref={svgRef}
+        viewBox="0 0 780 888"
+        role="img"
+        aria-label="Completed keychain preview"
+        onPointerMove={moveDraggedCharm}
+        onPointerUp={stopDraggingCharm}
+        onPointerCancel={stopDraggingCharm}
+        onPointerLeave={stopDraggingCharm}
+      >
         <defs>
           <radialGradient id="matteHardware" cx="34%" cy="24%" r="72%">
             <stop offset="0%" stopColor="#ffffff" stopOpacity="0.55" />
@@ -267,15 +359,31 @@ function KeychainCanvas({ hardwareType, hardware, cord, charm, charmAttachment }
         <g transform="translate(0 20)">
           <path
             d={wavyRectPath(86, 26, 608, 836, 44, 9)}
-            fill="#fff7e8"
-            stroke="#1734b7"
+            fill="#fff9ef"
+            stroke="#278BEA"
             strokeWidth="5"
             filter="url(#paperShadow)"
           />
           <g transform="translate(390 370) scale(1.18) translate(-390 -370)">
             {hardwareType === "round" ? <RoundRing hardware={hardware} /> : <Clasp hardware={hardware} />}
             <CordLoopSvg hardwareType={hardwareType} cord={cord} />
-            {charm ? <Charm bead={charm} attachment={charmAttachment} /> : null}
+            {charms.map((charm) => {
+              const bead = beadById.get(charm.beadId);
+              if (!bead) return null;
+
+              return (
+                <Charm
+                  key={charm.id}
+                  bead={bead}
+                  charm={charm}
+                  onPointerDown={(event) => {
+                    event.currentTarget.setPointerCapture?.(event.pointerId);
+                    setDragCharmId(charm.id);
+                    onMoveCharm(charm.id, getSvgCharmPosition(event, svgRef.current));
+                  }}
+                />
+              );
+            })}
           </g>
         </g>
       </svg>
@@ -296,7 +404,7 @@ function Clasp() {
     <g filter="url(#softShadow)">
       <path d="M354 178 V128 C354 92 426 92 426 128 V172" fill="none" stroke="url(#metalHardware)" strokeWidth="17" strokeLinecap="round" />
       <rect x="336" y="170" width="108" height="44" rx="11" fill="url(#metalHardware)" stroke="#35281e" strokeWidth="2" opacity="0.96" />
-      <circle cx="424" cy="192" r="10" fill="#fff7e8" stroke="url(#metalHardware)" strokeWidth="4" />
+      <circle cx="424" cy="192" r="10" fill="#FDFFBE" stroke="url(#metalHardware)" strokeWidth="4" />
       <circle cx="390" cy="238" r="28" fill="none" stroke="url(#metalHardware)" strokeWidth="10" />
       <path d="M415 108 C426 119 432 138 425 161" stroke="#fff" strokeWidth="4" strokeLinecap="round" opacity="0.45" />
     </g>
@@ -333,22 +441,66 @@ function CordLoopSvg({ hardwareType, cord }) {
   );
 }
 
-function Charm({ bead, attachment }) {
-  const charm = attachment === "hardwareLoop" ? { x: 318, y: 452, ringX: 318, ringY: 434 } : { x: 526, y: 400, ringX: 526, ringY: 382 };
+function Charm({ bead, charm, onPointerDown }) {
+  const anchor = getCharmAnchor(charm);
   const beadSize = getCanvasBeadSize(bead);
 
   return (
-    <g filter="url(#tinyShadow)">
-      <circle cx={charm.ringX} cy={charm.ringY} r="9" fill="none" stroke="url(#charmSilver)" strokeWidth="3" />
-      <image href={bead.src} x={charm.x - beadSize / 2} y={charm.y - 20} width={beadSize} height={beadSize} preserveAspectRatio="xMidYMid meet" />
+    <g className="draggable-charm" filter="url(#tinyShadow)" onPointerDown={onPointerDown}>
+      <circle cx={anchor.ringX} cy={anchor.ringY} r="9" fill="none" stroke="url(#charmSilver)" strokeWidth="3" />
+      <image href={bead.src} x={anchor.x - beadSize / 2} y={anchor.y - 20} width={beadSize} height={beadSize} preserveAspectRatio="xMidYMid meet" />
     </g>
   );
+}
+
+function getCharmAnchor(charm) {
+  const fallback = getCharmStart(charm.attachmentPoint || "hardwareLoop");
+  const x = Number.isFinite(charm.x) ? charm.x : fallback.x;
+  const y = Number.isFinite(charm.y) ? charm.y : fallback.y;
+
+  return { x, y, ringX: x, ringY: y - 18 };
+}
+
+function getSvgCharmPosition(event, svg) {
+  if (!svg) return { x: 318, y: 452 };
+
+  const point = svg.createSVGPoint();
+  point.x = event.clientX;
+  point.y = event.clientY;
+  const svgPoint = point.matrixTransform(svg.getScreenCTM().inverse());
+  const innerX = svgPoint.x;
+  const innerY = svgPoint.y - 20;
+  const x = 390 + (innerX - 390) / 1.18;
+  const y = 370 + (innerY - 370) / 1.18;
+
+  return {
+    x: Math.max(210, Math.min(570, x)),
+    y: Math.max(190, Math.min(690, y)),
+  };
 }
 
 function getCanvasBeadSize(bead) {
   if (!bead.id.startsWith("assorted-")) return 108;
   if (bead.shape !== "round") return 54;
   return 72;
+}
+
+function getDesignCharms(design) {
+  if (Array.isArray(design.charms)) return design.charms;
+  if (!design.charm) return [];
+
+  return [
+    {
+      id: "charm-1",
+      ...getCharmStart(design.charm.attachmentPoint || "hardwareLoop"),
+      beadId: design.charm.beadId,
+      attachmentPoint: design.charm.attachmentPoint || "hardwareLoop",
+    },
+  ];
+}
+
+function getCharmStart(attachmentPoint) {
+  return attachmentPoint === "lowerLoop" ? { x: 526, y: 400 } : { x: 318, y: 452 };
 }
 
 function shade(hex, amount) {
@@ -397,19 +549,19 @@ async function downloadPreviewImage() {
   const blueSquare = document.createElementNS(svgNamespace, "rect");
   blueSquare.setAttribute("width", "160");
   blueSquare.setAttribute("height", "160");
-  blueSquare.setAttribute("fill", "#3179ed");
+  blueSquare.setAttribute("fill", "#B3FBC5");
 
   const creamA = document.createElementNS(svgNamespace, "rect");
   creamA.setAttribute("width", "80");
   creamA.setAttribute("height", "80");
-  creamA.setAttribute("fill", "#fff7e8");
+  creamA.setAttribute("fill", "#FDFFBE");
 
   const creamB = document.createElementNS(svgNamespace, "rect");
   creamB.setAttribute("x", "80");
   creamB.setAttribute("y", "80");
   creamB.setAttribute("width", "80");
   creamB.setAttribute("height", "80");
-  creamB.setAttribute("fill", "#fff7e8");
+  creamB.setAttribute("fill", "#FDFFBE");
 
   pattern.append(blueSquare, creamA, creamB);
   defs.append(pattern);
@@ -504,15 +656,15 @@ function wavyRectPath(x, y, width, height, wavelength, amplitude) {
 }
 
 function randomDesign() {
+  const attachmentPoint = pick(["hardwareLoop", "lowerLoop"]);
+
   return {
     hardwareType: "round",
     hardwareColor: pick(hardwareColors).id,
     cordColor: pick(cordColors).id,
     beads: [],
-    charm: {
-      beadId: pick(charmBeads).id,
-      attachmentPoint: pick(["hardwareLoop", "lowerLoop"]),
-    },
+    charmAttachment: attachmentPoint,
+    charms: [{ id: `charm-${Date.now()}`, ...getCharmStart(attachmentPoint), beadId: pick(charmBeads).id, attachmentPoint }],
   };
 }
 

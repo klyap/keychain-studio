@@ -1,5 +1,5 @@
 :root {
-  --ink: #1734b7;
+  --ink: #278BEA;
   --panel: #fff9ef;
   --panel-strong: #fff1d6;
   --line: #402c42;
@@ -11,9 +11,9 @@
   font-family: "Arial Rounded MT Bold", "Avenir Next Rounded", "Nunito", "Trebuchet MS", system-ui, sans-serif;
   color: var(--ink);
   background:
-    linear-gradient(45deg, #fff7e8 25%, transparent 25% 75%, #fff7e8 75%) 0 0 / 220px 220px,
-    linear-gradient(45deg, #fff7e8 25%, transparent 25% 75%, #fff7e8 75%) 110px 110px / 220px 220px,
-    #3179ed;
+    linear-gradient(45deg, #FDFFBE 25%, transparent 25% 75%, #FDFFBE 75%) 0 0 / 220px 220px,
+    linear-gradient(45deg, #FDFFBE 25%, transparent 25% 75%, #FDFFBE 75%) 110px 110px / 220px 220px,
+    #B3FBC5;
 }
 
 * {
@@ -143,7 +143,7 @@ h1 {
 
 .stage-actions button {
   padding-inline: 24px;
-  border: 3px solid var(--ink);
+  border: 2px solid var(--ink);
 }
 
 .stage-actions button:hover,
@@ -562,6 +562,45 @@ h1 {
   font-weight: 900;
 }
 
+.selected-charms {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.selected-charms button {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px;
+  border: 1px dashed rgba(28, 32, 43, 0.36);
+  border-radius: 999px;
+  background: #fffdf7;
+  color: var(--receipt-red);
+  font-family: "Courier New", "Arial Rounded MT Bold", monospace;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.selected-charms img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.draggable-charm {
+  cursor: grab;
+  touch-action: none;
+}
+
+.draggable-charm:active {
+  cursor: grabbing;
+}
+
 .full-width {
   width: 100%;
   border: 1px dashed rgba(197, 22, 29, 0.48);
@@ -687,7 +726,7 @@ h1 {
     min-height: 0;
     margin: 0;
     padding: 28px 12px 46px;
-    border: 3px solid var(--ink);
+    border: 2px solid var(--ink);
     border-radius: 42px;
     background: #fff9ef;
     overflow: visible;
@@ -764,7 +803,7 @@ h1 {
     position: absolute;
     inset: 0;
     z-index: -1;
-    background: center / contain no-repeat url("data:image/svg+xml,%3Csvg viewBox='0 0 64 64' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M32 5c5.7 0 8.7 6.4 7.4 12.8 5.4-3.8 12.4-2.7 15.1 2.4 2.6 5.1-1.8 10.8-8.2 11.8 6.4 1 10.8 6.7 8.2 11.8-2.7 5.1-9.7 6.2-15.1 2.4C40.7 52.6 37.7 59 32 59s-8.7-6.4-7.4-12.8c-5.4 3.8-12.4 2.7-15.1-2.4C6.9 38.7 11.3 33 17.7 32c-6.4-1-10.8-6.7-8.2-11.8 2.7-5.1 9.7-6.2 15.1-2.4C23.3 11.4 26.3 5 32 5Z' fill='%23fff9ef' stroke='%231734b7' stroke-width='3' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background: center / contain no-repeat url("data:image/svg+xml,%3Csvg viewBox='0 0 64 64' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M32 5c5.7 0 8.7 6.4 7.4 12.8 5.4-3.8 12.4-2.7 15.1 2.4 2.6 5.1-1.8 10.8-8.2 11.8 6.4 1 10.8 6.7 8.2 11.8-2.7 5.1-9.7 6.2-15.1 2.4C40.7 52.6 37.7 59 32 59s-8.7-6.4-7.4-12.8c-5.4 3.8-12.4 2.7-15.1-2.4C6.9 38.7 11.3 33 17.7 32c-6.4-1-10.8-6.7-8.2-11.8 2.7-5.1 9.7-6.2 15.1-2.4C23.3 11.4 26.3 5 32 5Z' fill='%23fff9ef' stroke='%23278BEA' stroke-width='3' stroke-linejoin='round'/%3E%3C/svg%3E");
   }
 
   .step-tab.active span {
@@ -772,7 +811,7 @@ h1 {
   }
 
   .step-tab.active span::before {
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 64 64' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M32 5c5.7 0 8.7 6.4 7.4 12.8 5.4-3.8 12.4-2.7 15.1 2.4 2.6 5.1-1.8 10.8-8.2 11.8 6.4 1 10.8 6.7 8.2 11.8-2.7 5.1-9.7 6.2-15.1 2.4C40.7 52.6 37.7 59 32 59s-8.7-6.4-7.4-12.8c-5.4 3.8-12.4 2.7-15.1-2.4C6.9 38.7 11.3 33 17.7 32c-6.4-1-10.8-6.7-8.2-11.8 2.7-5.1 9.7-6.2 15.1-2.4C23.3 11.4 26.3 5 32 5Z' fill='%231734b7' stroke='%231734b7' stroke-width='3' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 64 64' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M32 5c5.7 0 8.7 6.4 7.4 12.8 5.4-3.8 12.4-2.7 15.1 2.4 2.6 5.1-1.8 10.8-8.2 11.8 6.4 1 10.8 6.7 8.2 11.8-2.7 5.1-9.7 6.2-15.1 2.4C40.7 52.6 37.7 59 32 59s-8.7-6.4-7.4-12.8c-5.4 3.8-12.4 2.7-15.1-2.4C6.9 38.7 11.3 33 17.7 32c-6.4-1-10.8-6.7-8.2-11.8 2.7-5.1 9.7-6.2 15.1-2.4C23.3 11.4 26.3 5 32 5Z' fill='%23278BEA' stroke='%23278BEA' stroke-width='3' stroke-linejoin='round'/%3E%3C/svg%3E");
   }
 
   .step-tab b {
@@ -840,7 +879,7 @@ h1 {
   .tool-panel .segmented[aria-label="Charm attachment"] button {
     min-height: 34px;
     padding: 5px 10px;
-    border: 2px solid var(--ink);
+    border: 1px solid var(--ink);
     color: var(--ink);
     background: #fff9ef;
     font-family: inherit;
@@ -857,7 +896,7 @@ h1 {
   .chip-row button {
     min-height: 46px;
     padding: 9px 12px;
-    border: 2px solid rgba(23, 52, 183, 0.2);
+    border: 1px solid rgba(39, 139, 234, 0.36);
     border-radius: 999px;
     background: #ffffff;
     color: var(--ink);
@@ -976,10 +1015,34 @@ h1 {
     height: 34px;
   }
 
+  .selected-charms {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .selected-charms button {
+    min-height: 32px;
+    padding: 4px 8px;
+    border: 1px solid var(--ink);
+    border-radius: 999px;
+    color: var(--ink);
+    background: #ffffff;
+    box-shadow: none;
+    font-family: inherit;
+    font-size: 0.72rem;
+    letter-spacing: 0;
+  }
+
+  .selected-charms img {
+    width: 20px;
+    height: 20px;
+  }
+
   .full-width {
     min-height: 44px;
     margin-top: 4px;
-    border: 2px solid var(--ink);
+    border: 1px solid var(--ink);
     border-radius: 999px;
     color: var(--ink);
     background: #ffffff;
@@ -1002,7 +1065,7 @@ h1 {
     min-width: 122px;
     min-height: 34px;
     padding: 5px 16px;
-    border: 3px solid var(--ink);
+    border: 2px solid var(--ink);
     border-radius: 999px;
     background: #ffffff;
     color: var(--ink);
