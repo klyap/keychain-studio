@@ -351,7 +351,6 @@ function KeychainCanvas({ hardwareType, hardware, cord, charms, onMoveCharm }) {
               );
             })}
           </g>
-          <StapleTacks />
         </g>
       </svg>
     </div>
@@ -394,19 +393,16 @@ function BackingCardPrint() {
   );
 }
 
-function StapleTacks() {
-  return (
-    <g aria-hidden="true" filter="url(#tinyShadow)">
-      <rect x="-15" y="-3.5" width="30" height="7" rx="3.5" transform="translate(352 73) rotate(48)" fill="url(#charmSilver)" stroke="#6f757a" strokeWidth="0.8" />
-      <rect x="-15" y="-3.5" width="30" height="7" rx="3.5" transform="translate(428 73) rotate(-48)" fill="url(#charmSilver)" stroke="#6f757a" strokeWidth="0.8" />
-    </g>
-  );
-}
 
 function RoundRing({ hardware }) {
+  const isMetal = hardware.finish === "metal";
+
   return (
     <g filter="url(#softShadow)">
-      <circle cx="390" cy="154" r="48" fill="none" stroke={hardware.value} strokeWidth="17" strokeLinecap="round" />
+      <circle cx="390" cy="154" r="48" fill="none" stroke={isMetal ? "url(#metalHardware)" : hardware.value} strokeWidth="17" strokeLinecap="round" />
+      {isMetal ? (
+        <path d="M348 126 C338 140 336 158 344 176" fill="none" stroke="#fff" strokeWidth="5" strokeLinecap="round" opacity="0.55" />
+      ) : null}
     </g>
   );
 }
