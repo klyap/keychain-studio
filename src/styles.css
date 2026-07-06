@@ -6,7 +6,7 @@
   --kraft: #b8874b;
   --brown: #46311f;
   --sticker: #ffe157;
-  --mono: "Space Mono", "Courier New", monospace;
+  --mono: "Special Elite", "Courier New", monospace;
   font-family: "Arial Rounded MT Bold", "Avenir Next Rounded", "Nunito", "Trebuchet MS", system-ui, sans-serif;
   color: var(--ink);
   background:
@@ -137,7 +137,7 @@ p {
   padding: 34px 26px 40px;
   border-radius: 0;
   background:
-    radial-gradient(circle at 18% 12%, rgba(115, 84, 45, 0.08) 0 1px, transparent 1.5px) 0 0 / 18px 18px,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.55' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23p)' opacity='0.09'/%3E%3C/svg%3E"),
     linear-gradient(90deg, rgba(255, 255, 255, 0.35), transparent 22%, rgba(88, 55, 22, 0.06) 100%),
     var(--paper-deep);
   box-shadow: 0 2px 0 rgba(255, 255, 255, 0.72) inset;
@@ -180,7 +180,7 @@ p {
 }
 
 .receipt-title span {
-  font-size: 1.5rem;
+  font-size: 2.4rem;
 }
 
 .receipt-meta {
@@ -437,6 +437,7 @@ p {
     display: flex;
     flex-direction: column;
     height: 100svh;
+    min-height: 0;
     padding: 8px 8px max(8px, env(safe-area-inset-bottom));
     gap: 0;
     overflow: hidden;
@@ -465,7 +466,7 @@ p {
   .canvas-wrap {
     flex: 0 1 auto;
     width: 100%;
-    height: min(49svh, 520px);
+    height: min(42svh, 460px);
     max-height: 100%;
     margin-block: auto;
     min-height: 0;
@@ -496,7 +497,7 @@ p {
   }
 
   .editor-panel {
-    --mobile-menu-height: min(232px, 32vh);
+    --mobile-menu-height: min(320px, 42vh);
     position: relative;
     flex: 0 0 var(--mobile-menu-height);
     display: grid;
@@ -519,7 +520,7 @@ p {
 
   @supports (height: 100svh) {
     .editor-panel {
-      --mobile-menu-height: clamp(210px, 29svh, 244px);
+      --mobile-menu-height: clamp(280px, 40svh, 380px);
     }
   }
 
@@ -708,8 +709,8 @@ p {
   }
 
   .charm-strip img {
-    width: 34px;
-    height: 34px;
+    width: 74%;
+    height: 74%;
   }
 
   .charm-lines {
