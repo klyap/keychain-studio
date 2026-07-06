@@ -145,11 +145,11 @@ p {
   -webkit-mask:
     radial-gradient(circle at 10px 8px, #000 8px, transparent 8.5px) left top / 20px 16px repeat-x,
     radial-gradient(circle at 10px 8px, #000 8px, transparent 8.5px) left bottom / 20px 16px repeat-x,
-    linear-gradient(#000, #000) left 0 top 16px / 100% calc(100% - 32px) no-repeat;
+    linear-gradient(#000, #000) left 0 top 8px / 100% calc(100% - 16px) no-repeat;
   mask:
     radial-gradient(circle at 10px 8px, #000 8px, transparent 8.5px) left top / 20px 16px repeat-x,
     radial-gradient(circle at 10px 8px, #000 8px, transparent 8.5px) left bottom / 20px 16px repeat-x,
-    linear-gradient(#000, #000) left 0 top 16px / 100% calc(100% - 32px) no-repeat;
+    linear-gradient(#000, #000) left 0 top 8px / 100% calc(100% - 16px) no-repeat;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
