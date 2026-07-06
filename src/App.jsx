@@ -362,11 +362,6 @@ const printMono = "'Special Elite', 'Courier New', monospace";
 function BackingCardPrint() {
   return (
     <g aria-hidden="true">
-      <g fill="#c5161d" fontFamily={printMono} fontWeight="700">
-        <text x="122" y="86" fontSize="27" letterSpacing="3">KEYCHAIN</text>
-        <text x="122" y="115" fontSize="27" letterSpacing="3">STUDIO</text>
-        <text x="122" y="140" fontSize="12" fontWeight="400" letterSpacing="1.5">HAND-TIED · ONE OF ONE</text>
-      </g>
       <g transform="translate(226 792) rotate(-8)" opacity="0.82">
         <rect x="-124" y="-27" width="248" height="54" rx="9" fill="none" stroke="#c5161d" strokeWidth="3" />
         <rect x="-117" y="-20" width="234" height="40" rx="6" fill="none" stroke="#c5161d" strokeWidth="1.5" />
