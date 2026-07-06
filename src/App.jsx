@@ -1,32 +1,24 @@
 import React, { useMemo, useRef, useState } from "react";
-import { beads, cordColors, defaultDesign, hardwareColors } from "./data.js";
+import { beads, cordColors, hardwareColors } from "./data.js";
 import cordLoopSvgRaw from "./assets/cord-loop.svg?raw";
 
 const beadById = new Map(beads.map((bead) => [bead.id, bead]));
 const hardwareById = new Map(hardwareColors.map((color) => [color.id, color]));
 const cordById = new Map(cordColors.map((color) => [color.id, color]));
 const charmBeads = beads.filter((bead) => bead.suggestedUse.includes("charm"));
-const MAX_CHARMS = 2;
+const MAX_CHARMS = 4;
 const charmStarts = [
   { x: 318, y: 452 },
   { x: 526, y: 400 },
+  { x: 300, y: 320 },
+  { x: 480, y: 560 },
 ];
 
 export default function App() {
-  const [design, setDesign] = useState(defaultDesign);
+  const [design, setDesign] = useState(randomDesign);
   const [activeStep, setActiveStep] = useState(0);
   const stepPagesRef = useRef(null);
   const charms = getDesignCharms(design);
-  const order = useMemo(
-    () => ({
-      number: String(Math.floor(1000000 + Math.random() * 9000000)),
-      placedAt: new Date()
-        .toLocaleString("en-US", { month: "2-digit", day: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
-        .replace(",", "  "),
-    }),
-    [],
-  );
-
   const selectedHardware = hardwareById.get(design.hardwareColor) || hardwareColors[0];
   const selectedCord = cordById.get(design.cordColor) || cordColors[0];
 
@@ -98,9 +90,6 @@ export default function App() {
         />
 
         <div className="stage-actions">
-          <button type="button" onClick={downloadPreviewImage}>
-            Save PNG
-          </button>
           <button type="button" onClick={() => setDesign(randomDesign())}>
             Surprise me
           </button>
@@ -108,17 +97,6 @@ export default function App() {
       </section>
 
       <section className="editor-panel" aria-label="Keychain controls">
-        <div className="receipt-header" aria-hidden="true">
-          <div className="receipt-title">
-            <span>✿</span>
-            <strong>Custom Order</strong>
-            <span>✿</span>
-          </div>
-          <div className="receipt-meta">
-            <span>Order # {order.number}</span>
-            <span>{order.placedAt}</span>
-          </div>
-        </div>
         <div className="mobile-step-tabs">
           {["Hardware", "Cord", "Charm"].map((label, index) => (
             <button
@@ -142,14 +120,6 @@ export default function App() {
             toggleCharm={toggleCharm}
             removeCharm={removeCharm}
           />
-        </div>
-        <div className="mobile-nav">
-          <button type="button" className="mobile-nav-button" onClick={() => goToStep(activeStep - 1)}>
-            ← Prev
-          </button>
-          <button type="button" className="mobile-nav-button" onClick={() => goToStep(activeStep + 1)}>
-            Next →
-          </button>
         </div>
       </section>
     </main>
@@ -218,7 +188,6 @@ function CharmPicker({ charms, selectedCharmBeadIds, toggleCharm, removeCharm })
               <button key={charm.id} type="button" onClick={() => removeCharm(charm.id)} aria-label={`Remove ${bead.name}`}>
                 <img src={bead.src} alt="" />
                 <span className="charm-name">{bead.name}</span>
-                <i className="leader" aria-hidden="true" />
                 <b className="remove-mark">✕</b>
               </button>
             );
@@ -262,14 +231,18 @@ function SwatchGrid({ colors, selected, onPick, getMeta }) {
 function KeychainCanvas({ hardwareType, hardware, cord, charms, onMoveCharm }) {
   const isMetal = hardware.finish === "metal";
   const svgRef = useRef(null);
-  const [dragCharmId, setDragCharmId] = useState(null);
+  const dragRef = useRef(null);
 
   const moveDraggedCharm = (event) => {
-    if (!dragCharmId || !svgRef.current) return;
-    onMoveCharm(dragCharmId, getSvgCharmPosition(event, svgRef.current));
+    const drag = dragRef.current;
+    if (!drag || !svgRef.current) return;
+    const point = getSvgPoint(event, svgRef.current);
+    onMoveCharm(drag.charmId, clampCharmPosition(point.x + drag.dx, point.y + drag.dy));
   };
 
-  const stopDraggingCharm = () => setDragCharmId(null);
+  const stopDraggingCharm = () => {
+    dragRef.current = null;
+  };
 
   return (
     <div className="canvas-wrap">
@@ -326,10 +299,9 @@ function KeychainCanvas({ hardwareType, hardware, cord, charms, onMoveCharm }) {
             d={wavyRectPath(86, 26, 608, 836, 44, 9)}
             fill="#fff9ef"
             stroke="#c5161d"
-            strokeWidth="4"
+            strokeWidth="8"
             filter="url(#paperShadow)"
           />
-          <BackingCardPrint />
           <g transform="translate(390 370) scale(1.18) translate(-390 -370)">
             {hardwareType === "round" ? <RoundRing hardware={hardware} /> : <Clasp hardware={hardware} />}
             <CordLoopSvg hardwareType={hardwareType} cord={cord} />
@@ -343,9 +315,11 @@ function KeychainCanvas({ hardwareType, hardware, cord, charms, onMoveCharm }) {
                   bead={bead}
                   charm={charm}
                   onPointerDown={(event) => {
+                    event.preventDefault();
                     event.currentTarget.setPointerCapture?.(event.pointerId);
-                    setDragCharmId(charm.id);
-                    onMoveCharm(charm.id, getSvgCharmPosition(event, svgRef.current));
+                    const point = getSvgPoint(event, svgRef.current);
+                    const anchor = getCharmAnchor(charm);
+                    dragRef.current = { charmId: charm.id, dx: anchor.x - point.x, dy: anchor.y - point.y };
                   }}
                 />
               );
@@ -356,23 +330,6 @@ function KeychainCanvas({ hardwareType, hardware, cord, charms, onMoveCharm }) {
     </div>
   );
 }
-
-const printMono = "'Special Elite', 'Courier New', monospace";
-
-function BackingCardPrint() {
-  return (
-    <g aria-hidden="true">
-      <g transform="translate(226 792) rotate(-8)" opacity="0.82">
-        <rect x="-124" y="-27" width="248" height="54" rx="9" fill="none" stroke="#c5161d" strokeWidth="3" />
-        <rect x="-117" y="-20" width="234" height="40" rx="6" fill="none" stroke="#c5161d" strokeWidth="1.5" />
-        <text x="0" y="7" textAnchor="middle" fontFamily={printMono} fontWeight="700" fontSize="19" letterSpacing="2" fill="#c5161d">
-          KEYCHAIN STUDIO
-        </text>
-      </g>
-    </g>
-  );
-}
-
 
 function RoundRing({ hardware }) {
   const isMetal = hardware.finish === "metal";
@@ -448,7 +405,7 @@ function getCharmAnchor(charm) {
   return { x, y, ringX: x, ringY: y - 18 };
 }
 
-function getSvgCharmPosition(event, svg) {
+function getSvgPoint(event, svg) {
   if (!svg) return { x: 318, y: 452 };
 
   const point = svg.createSVGPoint();
@@ -457,9 +414,14 @@ function getSvgCharmPosition(event, svg) {
   const svgPoint = point.matrixTransform(svg.getScreenCTM().inverse());
   const innerX = svgPoint.x;
   const innerY = svgPoint.y - 20;
-  const x = 390 + (innerX - 390) / 1.18;
-  const y = 370 + (innerY - 370) / 1.18;
 
+  return {
+    x: 390 + (innerX - 390) / 1.18,
+    y: 370 + (innerY - 370) / 1.18,
+  };
+}
+
+function clampCharmPosition(x, y) {
   return {
     x: Math.max(210, Math.min(570, x)),
     y: Math.max(190, Math.min(690, y)),
@@ -487,108 +449,6 @@ function shade(hex, amount) {
   const g = Math.max(0, Math.min(255, ((number >> 8) & 0xff) + amount));
   const b = Math.max(0, Math.min(255, (number & 0xff) + amount));
   return `#${(b | (g << 8) | (r << 16)).toString(16).padStart(6, "0")}`;
-}
-
-async function downloadPreviewImage() {
-  const sourceSvg = document.getElementById("keychain-preview-svg");
-  if (!sourceSvg) return;
-
-  const svgNamespace = "http://www.w3.org/2000/svg";
-  const exportWidth = 780;
-  const exportHeight = 980;
-  const clone = sourceSvg.cloneNode(true);
-  clone.setAttribute("xmlns", svgNamespace);
-  clone.setAttribute("viewBox", `0 0 ${exportWidth} ${exportHeight}`);
-  clone.setAttribute("width", String(exportWidth));
-  clone.setAttribute("height", String(exportHeight));
-
-  await Promise.all([...clone.querySelectorAll("image")].map(async (image) => {
-    const href = image.getAttribute("href");
-    if (href && !href.startsWith("data:")) {
-      const response = await fetch(new URL(href, window.location.href).href);
-      const blob = await response.blob();
-      image.setAttribute("href", await blobToDataUrl(blob));
-    }
-  }));
-
-  let defs = clone.querySelector("defs");
-  if (!defs) {
-    defs = document.createElementNS(svgNamespace, "defs");
-    clone.prepend(defs);
-  }
-
-  const pattern = document.createElementNS(svgNamespace, "pattern");
-  pattern.setAttribute("id", "downloadGingham");
-  pattern.setAttribute("width", "52");
-  pattern.setAttribute("height", "52");
-  pattern.setAttribute("patternUnits", "userSpaceOnUse");
-
-  const clothBase = document.createElementNS(svgNamespace, "rect");
-  clothBase.setAttribute("width", "52");
-  clothBase.setAttribute("height", "52");
-  clothBase.setAttribute("fill", "#fff3df");
-
-  const stripeAcross = document.createElementNS(svgNamespace, "rect");
-  stripeAcross.setAttribute("width", "52");
-  stripeAcross.setAttribute("height", "26");
-  stripeAcross.setAttribute("fill", "rgba(224, 88, 74, 0.16)");
-
-  const stripeDown = document.createElementNS(svgNamespace, "rect");
-  stripeDown.setAttribute("width", "26");
-  stripeDown.setAttribute("height", "52");
-  stripeDown.setAttribute("fill", "rgba(224, 88, 74, 0.16)");
-
-  pattern.append(clothBase, stripeAcross, stripeDown);
-  defs.append(pattern);
-
-  const background = document.createElementNS(svgNamespace, "rect");
-  background.setAttribute("x", "0");
-  background.setAttribute("y", "0");
-  background.setAttribute("width", String(exportWidth));
-  background.setAttribute("height", String(exportHeight));
-  background.setAttribute("fill", "url(#downloadGingham)");
-  defs.after(background);
-
-  const svgText = new XMLSerializer().serializeToString(clone);
-  const svgBlob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
-  const svgUrl = URL.createObjectURL(svgBlob);
-
-  try {
-    const image = new Image();
-    image.decoding = "async";
-    const loaded = new Promise((resolve, reject) => {
-      image.onload = resolve;
-      image.onerror = reject;
-    });
-    image.src = svgUrl;
-    await loaded;
-
-    const scale = 2;
-    const canvas = document.createElement("canvas");
-    canvas.width = exportWidth * scale;
-    canvas.height = exportHeight * scale;
-    const context = canvas.getContext("2d");
-    context.drawImage(image, 0, 0, canvas.width, canvas.height);
-
-    const pngBlob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
-    const pngUrl = URL.createObjectURL(pngBlob);
-    const link = document.createElement("a");
-    link.href = pngUrl;
-    link.download = "keychain-studio.png";
-    link.click();
-    URL.revokeObjectURL(pngUrl);
-  } finally {
-    URL.revokeObjectURL(svgUrl);
-  }
-}
-
-function blobToDataUrl(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
 }
 
 function wavyRectPath(x, y, width, height, wavelength, amplitude) {
