@@ -178,6 +178,7 @@ function CharmPicker({ charms, selectedCharmBeadIds, toggleCharm, removeCharm })
           );
         })}
       </div>
+      {/* Chosen-charms list, hidden for now — restore by uncommenting.
       {charms.length > 0 ? (
         <div className="charm-lines" aria-label="Charms on this order">
           {charms.map((charm) => {
@@ -194,6 +195,7 @@ function CharmPicker({ charms, selectedCharmBeadIds, toggleCharm, removeCharm })
           })}
         </div>
       ) : null}
+      */}
     </section>
   );
 }
@@ -297,7 +299,7 @@ function KeychainCanvas({ hardwareType, hardware, cord, charms, onMoveCharm }) {
         <g transform="translate(0 20)">
           <path
             d={wavyRectPath(86, 26, 608, 836, 44, 9)}
-            fill="#fff9ef"
+            fill="#f7edda"
             stroke="#c5161d"
             strokeWidth="8"
             filter="url(#paperShadow)"
